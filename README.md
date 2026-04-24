@@ -72,158 +72,55 @@ Before installing the components wazuh certificates must be generated first. Waz
 
 
 
-  Wazuh indexer nodes installation
+## Wazuh indexer nodes installation
 
-Follow these steps to install and configure a single-node or multi-node Wazuh indexer.
-Installing package dependencies
+Carefully follow these steps to install and configure a single-node or multi-node Wazuh indexer. I'm not going to write down the detailed installation process because they are long and well structured in the actual docs.
 
-    Run the following command to install the following packages if missing:
+Install the package dependencies and add the repository, follow the steps [here](https://documentation.wazuh.com/current/installation-guide/wazuh-indexer/step-by-step.html#installing-package-dependencies).
 
-    apt-get install debconf adduser procps
+So far, in my case, the installation went smoothly. However, I ran into some trouble near the end of the installation process. The indexer would not start and actually kept returning this error:
 
-Adding the Wazuh repository
+    OpenSearch Security not initialized
 
-    Install the following packages if missing.
+After poking around on the internet, I found a fix where I had to manually run a specific script. The security initialization script is usually located here in default installs:
 
-        apt-get install gnupg apt-transport-https
+    sudo /usr/share/wazuh-indexer/bin/indexer-security-init.sh
 
-    Install the GPG key.
+So, just run this command, and it should initialize the wazuh indexer cluster. Make sure to enable and start the wazuh-indexer service
 
-        curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && chmod 644 /usr/share/keyrings/wazuh.gpg
-
-    Add the repository.
-
-        echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | tee -a /etc/apt/sources.list.d/wazuh.list
-
-    Update the packages information.
-
-        apt-get update
-
-Installing the Wazuh indexer
-
-    Install the Wazuh indexer package.
-
-    apt-get -y install wazuh-indexer
-
-Configuring the Wazuh indexer
-
-    Edit /etc/wazuh-indexer/opensearch.yml and replace the following values:
-
-        network.host: Sets the address of this node for both HTTP and transport traffic. The node will bind to this address and use it as its publish address. Accepts an IP address or a hostname.
-
-        Use the same node address set in config.yml to create the SSL certificates.
-
-        node.name: Name of the Wazuh indexer node as defined in the config.yml file. For example, node-1.
-
-        cluster.initial_master_nodes: List of the names of the master-eligible nodes. These names are defined in the config.yml file. Uncomment the node-2 and node-3 lines, change the names, or add more lines, according to your config.yml definitions.
-
-        cluster.initial_master_nodes:
-        - "node-1"
-        - "node-2"
-        - "node-3"
-
-        discovery.seed_hosts: List of the addresses of the master-eligible nodes. Each element can be either an IP address or a hostname. You may leave this setting commented if you are configuring the Wazuh indexer as a single node. For multi-node configurations, uncomment this setting and set the IP addresses of each master-eligible node.
-
-            discovery.seed_hosts:
-              - "10.0.0.1"
-              - "10.0.0.2"
-              - "10.0.0.3"
-
-        plugins.security.nodes_dn: List of the Distinguished Names of the certificates of all the Wazuh indexer cluster nodes. Uncomment the lines for node-2 and node-3 and change the common names (CN) and values according to your settings and your config.yml definitions.
-
-        plugins.security.nodes_dn:
-        - "CN=node-1,OU=Wazuh,O=Wazuh,L=California,C=US"
-        - "CN=node-2,OU=Wazuh,O=Wazuh,L=California,C=US"
-        - "CN=node-3,OU=Wazuh,O=Wazuh,L=California,C=US"
+    systemctl daemon-reload
+    systemctl enable wazuh-indexer
+    systemctl start wazuh-indexer
 
 
-Deploying certificates
+To test if the indexer is working properly:
 
-Note
+    curl -k -u admin https://<your_ip>:9200
+    curl -k -u admin https://<your_ip>/_cat/nodes?v
 
-Make sure that a copy of wazuh-certificates.tar, created in the previous stage of the installation process, is placed in your working directory.
-
-    Run the following commands, replacing <INDEXER_NODE_NAME> with the name of the Wazuh indexer node you are configuring as defined in config.yml. For example, node-1. This deploys the SSL certificates to encrypt communications between the Wazuh central components.
-
-    NODE_NAME=<INDEXER_NODE_NAME>
-
-    mkdir /etc/wazuh-indexer/certs
-    tar -xf ./wazuh-certificates.tar -C /etc/wazuh-indexer/certs/ ./$NODE_NAME.pem ./$NODE_NAME-key.pem ./admin.pem ./admin-key.pem ./root-ca.pem
-    mv -n /etc/wazuh-indexer/certs/$NODE_NAME.pem /etc/wazuh-indexer/certs/indexer.pem
-    mv -n /etc/wazuh-indexer/certs/$NODE_NAME-key.pem /etc/wazuh-indexer/certs/indexer-key.pem
-    chmod 500 /etc/wazuh-indexer/certs
-    chmod 400 /etc/wazuh-indexer/certs/*
-    chown -R wazuh-indexer:wazuh-indexer /etc/wazuh-indexer/certs
-
-    Recommended action: If no other Wazuh components will be installed on this node, run the following command to remove the wazuh-certificates.tar file.
-
-    rm -f ./wazuh-certificates.tar
-
-Note
-
-For Wazuh indexer installation on hardened endpoints with noexec flag on the /tmp directory, additional setup is required. See the Wazuh indexer configuration on hardened endpoints section for necessary configuration.
-Starting the service
-
-        Enable and start the Wazuh indexer service.
-
-            systemctl daemon-reload
-            systemctl enable wazuh-indexer
-            systemctl start wazuh-indexer
-
-Repeat this stage of the installation process for every Wazuh indexer node in your multi-node cluster. Then proceed with initializing your single-node or multi-node cluster in the next stage.
-Disable Wazuh updates
-
-We recommend disabling the Wazuh package repositories after installing all components on this server to prevent accidental upgrades.
-
-Execute the following command only after completing all installations:
-
-sed -i "s/^deb /#deb /" /etc/apt/sources.list.d/wazuh.list
-apt update
-
-Cluster initialization
-
-The final stage of installing the Wazuh indexer single-node or multi-node cluster consists of running the security admin script.
-
-    Run the Wazuh indexer indexer-security-init.sh script on any Wazuh indexer node to load the new certificates information and start the single-node or multi-node cluster.
-
-    /usr/share/wazuh-indexer/bin/indexer-security-init.sh
-
-    Note
-
-    You only have to initialize the cluster once, there is no need to run this command on every node.
-
-Testing the cluster installation
-
-    Run the following commands to confirm that the installation is successful. Replace <WAZUH_INDEXER_IP_ADDRESS> with the IP address of the Wazuh indexer and enter admin as the password when prompted:
-
-    curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200
-
-    Output
+The default password is ```admin``` and it should return something like this:
 
     {
       "name" : "node-1",
       "cluster_name" : "wazuh-cluster",
-      "cluster_uuid" : "095jEW-oRJSFKLz5wmo5PA",
+      "cluster_uuid" : <redacted>,
       "version" : {
         "number" : "7.10.2",
-        "build_type" : "rpm",
-        "build_hash" : "db90a415ff2fd428b4f7b3f800a51dc229287cb4",
-        "build_date" : "2023-06-03T06:24:25.112415503Z",
+        "build_type" : "deb",
+        "build_hash" : <redacted>,
+        "build_date" : "2026-03-13T10:29:35.190091416Z",
         "build_snapshot" : false,
-        "lucene_version" : "9.6.0",
+        "lucene_version" : "9.12.3",
         "minimum_wire_compatibility_version" : "7.10.0",
         "minimum_index_compatibility_version" : "7.0.0"
       },
       "tagline" : "The OpenSearch Project: https://opensearch.org/"
     }
 
-    Run the following command to check if the cluster is working correctly. Replace <WAZUH_INDEXER_IP_ADDRESS> with the IP address of the Wazuh indexer and enter admin as the password when prompted:
+And this
 
-    curl -k -u admin https://<WAZUH_INDEXER_IP_ADDRESS>:9200/_cat/nodes?v
+    ip            heap.percent ram.percent cpu load_1m load_5m load_15m node.role node.roles                                        cluster_manager name
+    <your_ip>          45          96   5    0.57    0.58     0.65 dimr      cluster_manager,data,ingest,remote_cluster_client *               node-1
 
-    The command produces output similar to the following:
-    Output
 
-    ip              heap.percent ram.percent cpu load_1m load_5m load_15m node.role node.roles                               cluster_manager name
-    192.168.107.240           19          94   4    0.22    0.21     0.20 dimr      data,ingest,master,remote_cluster_client *               node-1
 
