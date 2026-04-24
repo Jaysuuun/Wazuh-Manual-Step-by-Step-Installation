@@ -123,4 +123,5 @@ And this
     <your_ip>          45          96   5    0.57    0.58     0.65 dimr      cluster_manager,data,ingest,remote_cluster_client *               node-1
 
 
+## Wazuh Server Installation
 
