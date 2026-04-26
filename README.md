@@ -124,4 +124,15 @@ And this
 
 
 ## Wazuh Server Installation
+  The Wazuh server analyzes the data received from the Wazuh agents, triggering alerts when threats or anomalies are detected. It is also used to remotely manage the configurations of Wazuh agents and monitor their status.
+
+In my case, I'm installing a single-node setup only, so feel free to just follow along with the docs [here](https://documentation.wazuh.com/current/installation-guide/wazuh-server/step-by-step.html#installing-the-wazuh-manager)
+
+Most of the errors I encountered were permission errors that can be easily fixed by adding sudo. Make sure to type ```sudo``` before those curl commands and during the keystore part of the docs: 
+
+    echo admin | sudo filebeat keystore add username --stdin --force
+
+The documentation is pretty clear and straightforward. So just follow along and you shoudn't run into major problems.
+
+## Wazuh Dashboard Installation
 
