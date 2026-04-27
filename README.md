@@ -135,4 +135,15 @@ Most of the errors I encountered were permission errors that can be easily fixed
 The documentation is pretty clear and straightforward. So just follow along and you shoudn't run into major problems.
 
 ## Wazuh Dashboard Installation
+  The wazuh dashboard is pretty easy to set up, just follow the docs [carefully](https://documentation.wazuh.com/current/installation-guide/wazuh-dashboard/step-by-step.html). After installing the required dependencies, if you are installing the dashboard on the same machine as the manager and indexer, just skip to this [part](https://documentation.wazuh.com/current/installation-guide/wazuh-dashboard/step-by-step.html)
 
+  The same as installing the manager most of the errors I encoutered are permission errors so make sure to add ```sudo``` to your command escpecially the certs part:
+
+      [ ! -e /etc/wazuh-dashboard/certs/dashboard.pem ] && \
+      sudo mv -n /etc/wazuh-dashboard/certs/$NODE_NAME.pem /etc/wazuh-dashboard/certs/dashboard.pem
+      
+      [ ! -e /etc/wazuh-dashboard/certs/dashboard-key.pem ] && \
+      sudo mv -n /etc/wazuh-dashboard/certs/$NODE_NAME-key.pem /etc/wazuh-dashboard/certs/dashboard-key.pem
+
+
+## Agent Deployment
